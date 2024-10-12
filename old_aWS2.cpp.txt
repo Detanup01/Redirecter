@@ -1,0 +1,134 @@
+#include "../headers/aWS2.h"
+#include "../headers/common_includes.h"
+#include <format>
+#include "../headers/INISettings.h"
+#include "../headers/INISettings.h"
+
+#pragma comment(lib, "ws2_32.lib")
+
+int (WINAPI* Real_SendTo)(SOCKET s, const char* buf, int len, int flags, const sockaddr* to, int tolen) = sendto;
+int (WINAPI* Real_Connect)(SOCKET s, const sockaddr* addr, int namelen) = connect;
+int (WINAPI* Real_WSAConnect)(SOCKET s, const sockaddr* addr, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS) = WSAConnect;
+INT (WINAPI* Real_getaddrinfo)(PCSTR pNodeName, PCSTR pServiceName, const ADDRINFOA* pHints, PADDRINFOA* ppResult) = getaddrinfo;
+SOCKET (WINAPI* Real_accept)(SOCKET s,sockaddr* addr,int* addrlen) = accept;
+int (WINAPI* Real_getnameinfo)(const struct sockaddr* sa, socklen_t salen, PCHAR host, DWORD hostlen, PCHAR serv, DWORD servlen, int flags) = getnameinfo;
+hostent* (WINAPI* Real_gethostbyname)(const char* name) = gethostbyname;
+INT(__stdcall* Real_GetAddrInfoW)(PCWSTR pNodeName, PCWSTR pServiceName, const ADDRINFOW* pHints, PADDRINFOW* ppResult) = GetAddrInfoW;
+INT(__stdcall* Real_GetAddrInfoExA)(PCSTR a, PCSTR b, DWORD c, LPGUID d, const ADDRINFOEXA* e, PADDRINFOEXA* f, struct timeval* g, LPOVERLAPPED h, LPLOOKUPSERVICE_COMPLETION_ROUTINE i, LPHANDLE j) = GetAddrInfoExA;
+INT(__stdcall* Real_GetAddrInfoExW)(PCWSTR a, PCWSTR b, DWORD c, LPGUID d, const ADDRINFOEXW* e, PADDRINFOEXW* f, struct timeval* g, LPOVERLAPPED h, LPLOOKUPSERVICE_COMPLETION_ROUTINE i, LPHANDLE j) = GetAddrInfoExW;
+int(__stdcall* Real_WSARecvFrom)(SOCKET s, LPWSABUF b, DWORD c, LPDWORD d, LPDWORD e, struct sockaddr* addr, LPINT f, LPWSAOVERLAPPED g, LPWSAOVERLAPPED_COMPLETION_ROUTINE h) = WSARecvFrom;
+int(__stdcall* Real_WSASendTo)(SOCKET s, LPWSABUF b, DWORD c, LPDWORD d, DWORD e, const struct sockaddr* addr, int f, LPWSAOVERLAPPED g, LPWSAOVERLAPPED_COMPLETION_ROUTINE h) = WSASendTo;
+
+int WINAPI Mine_SendTo(SOCKET s, const char* buf, int len, int flags, const sockaddr* to, int tolen)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("SendTo\n");
+
+    // TODO: Finish this
+    if (to->sa_family == AF_INET) {
+        struct sockaddr_in* addr_in = (struct sockaddr_in*)to;
+        unsigned char ip[4];
+        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
+        PRINT_DEBUG("CHECK IP %hhu.%hhu.%hhu.%hhu : %u \n", ip[0], ip[1], ip[2], ip[3], addr_in->sin_port);
+    }
+    //return WSAEHOSTUNREACH;
+    return Real_SendTo(s, buf, len, flags, to, tolen);
+}
+
+int WINAPI Mine_Connect(SOCKET s, const sockaddr* addr, int namelen)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("Connect\n");
+
+    // TODO: Finish this
+    if (addr->sa_family == AF_INET) {
+        struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
+        unsigned char ip[4];
+        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
+        
+        PRINT_DEBUG("CONNECT IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], htons(addr_in->sin_port));
+    }
+    return Real_Connect(s, addr, namelen);
+}
+
+int WINAPI Mine_WSAConnect(SOCKET s, const sockaddr* addr, int namelen, LPWSABUF lpCallerData, LPWSABUF lpCalleeData, LPQOS lpSQOS, LPQOS lpGQOS)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("WSAConnect\n");
+    if (addr->sa_family == AF_INET) {
+        struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
+        unsigned char ip[4];
+        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
+        PRINT_DEBUG("CHECK IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], addr_in->sin_port);
+    }
+    return Real_WSAConnect(s, addr, namelen, lpCallerData, lpCalleeData, lpSQOS, lpGQOS);
+}
+
+INT WINAPI Mine_getaddrinfo(PCSTR pNodeName, PCSTR pServiceName, const ADDRINFOA* pHints, PADDRINFOA* ppResult)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("getaddrinfo %s %s \n", pNodeName, pServiceName);
+    std::string Ip;
+    if (CheckDNS_New(pNodeName, &Ip))
+    {
+        return Real_getaddrinfo(Ip.c_str(), pServiceName, pHints, ppResult);
+    }
+    //This is debug stuff: Remove later on
+    return Real_getaddrinfo(pNodeName, pServiceName, pHints, ppResult);
+    
+}
+
+SOCKET WINAPI Mine_accept(SOCKET s, sockaddr* addr, int* addrlen)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("accept\n");
+    auto ret = Real_accept(s, addr, addrlen);
+    if (addr->sa_family == AF_INET) {
+        struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
+        unsigned char ip[4];
+        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
+        PRINT_DEBUG("CHECK IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], addr_in->sin_port);
+    }
+    return ret;
+}
+
+int WINAPI Mine_getnameinfo(const struct sockaddr* sa, socklen_t salen, PCHAR host, DWORD hostlen, PCHAR serv, DWORD servlen, int flags)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("getnameinfo\n");
+    if (sa->sa_family == AF_INET) {
+        struct sockaddr_in* addr_in = (struct sockaddr_in*)sa;
+        unsigned char ip[4];
+        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
+        PRINT_DEBUG("CHECK IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], addr_in->sin_port);
+    }
+
+    auto ret = Real_getnameinfo(sa, salen, host, hostlen, serv, servlen, flags);
+    PRINT_DEBUG("getnameinfo %s %s\n", host, serv);
+
+    return ret;
+}
+
+hostent* WINAPI Mine_gethostbyname(const char* name)
+{
+    if (IsLogEnabled())
+        PRINT_DEBUG("gethostbyname %s\n", name);
+
+    auto ret = Real_gethostbyname(name);
+    std::string detailedmsg{};
+    detailedmsg += std::format("{} {} {} {} {}", ret->h_addrtype, ret->h_length, ret->h_name, ret->h_aliases[0], ret->h_addr_list[0]);
+    PRINT_DEBUG("gethostbyname ret: %s", detailedmsg.c_str());
+    return ret;
+}
+
+
+void HookWS2(void)
+{
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_SendTo), reinterpret_cast<PVOID>(Mine_SendTo));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_Connect), reinterpret_cast<PVOID>(Mine_Connect));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_WSAConnect), reinterpret_cast<PVOID>(Mine_WSAConnect));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_getaddrinfo), reinterpret_cast<PVOID>(Mine_getaddrinfo));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_accept), reinterpret_cast<PVOID>(Mine_accept));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_getnameinfo), reinterpret_cast<PVOID>(Mine_getnameinfo));
+    DetourAttach(reinterpret_cast<PVOID*>(&Real_gethostbyname), reinterpret_cast<PVOID>(Mine_gethostbyname));
+}
