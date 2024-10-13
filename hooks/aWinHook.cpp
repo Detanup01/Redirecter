@@ -104,7 +104,7 @@ void __stdcall Mine_OutputDebugStringA(LPCSTR lpOutputString)
 {
     if (IsLogEnabled("debugger"))
         PRINT_DEBUG("OutputDebugStringA %s\n", lpOutputString);
-    Real_OutputDebugStringA(lpOutputString);
+    //Real_OutputDebugStringA(lpOutputString);
 }
 
 void(__stdcall* Real_OutputDebugStringW)(LPCWSTR lpOutputString) = OutputDebugStringW;
@@ -112,7 +112,7 @@ void __stdcall Mine_OutputDebugStringW(LPCWSTR lpOutputString)
 {
     if (IsLogEnabled("debugger"))
         PRINT_DEBUG("OutputDebugStringW %ws\n", lpOutputString);
-    Real_OutputDebugStringW(lpOutputString);
+    //Real_OutputDebugStringW(lpOutputString);
 }
 
 void HookWin(void)

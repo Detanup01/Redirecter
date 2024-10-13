@@ -1,6 +1,5 @@
 #include "../headers/aWS2.h"
 #include "../headers/common_includes.h"
-#include <format>
 #include "../headers/INISettings.h"
 
 #pragma comment(lib, "ws2_32.lib")
@@ -13,14 +12,9 @@ int WINAPI Mine_Connect(SOCKET s, const sockaddr* addr, int namelen)
 {
     if (IsLogEnabled("ws2"))
         PRINT_DEBUG("Connect\n");
-    /*
-    if (addr->sa_family == AF_INET) {
-        struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
-        unsigned char ip[4];
-        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
-        
-        PRINT_DEBUG("CONNECT IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], htons(addr_in->sin_port));
-    }*/
+    print_sockaddr(addr);
+    if (IpPortRedirection(&addr))
+        print_sockaddr(addr);
     return Real_Connect(s, addr, namelen);
 }
 
@@ -28,13 +22,9 @@ int WINAPI Mine_WSAConnect(SOCKET s, const sockaddr* addr, int namelen, LPWSABUF
 {
     if (IsLogEnabled("ws2"))
         PRINT_DEBUG("WSAConnect\n");
-    /*
-    if (addr->sa_family == AF_INET) {
-        struct sockaddr_in* addr_in = (struct sockaddr_in*)addr;
-        unsigned char ip[4];
-        memcpy(ip, &addr_in->sin_addr, sizeof(ip));
-        PRINT_DEBUG("CHECK IP %hhu.%hhu.%hhu.%hhu:%u \n", ip[0], ip[1], ip[2], ip[3], addr_in->sin_port);
-    }*/
+    print_sockaddr(addr);
+    if (IpPortRedirection(&addr))
+        print_sockaddr(addr);
     return Real_WSAConnect(s, addr, namelen, lpCallerData, lpCalleeData, lpSQOS, lpGQOS);
 }
 
